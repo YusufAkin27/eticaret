@@ -50,37 +50,39 @@ public class PaymentRequest {
     private String email;
 
     @NotBlank(message = "Telefon numarası boş olamaz.")
-    @Pattern(
-            regexp = "^(\\+90[0-9]{10}|0[0-9]{10}|[0-9]{10})$",
-            message = "Telefon numarası geçerli formatta olmalıdır. Örnek: +905336360079, 05336360079 veya 5336360079"
-    )
     private String phone;
 
-    @NotBlank(message = "Adres alanı boş olamaz.")
+    // Adres bilgileri: addressId yoksa zorunlu, addressId varsa opsiyonel
+    // (Kayıtlı adres seçildiğinde null olabilir)
     private String address;
 
-    @NotBlank(message = "Şehir alanı boş olamaz.")
     private String city;
 
-    @NotBlank(message = "İlçe alanı boş olamaz.")
     private String district;
 
     private String addressDetail; // opsiyonel (örnek: daire no, kat, apartman)
 
     // -------------------------
-    // 2️⃣1️⃣ Kullanıcı Adres Seçimi (Login kullanıcılar için)
+    // 2️⃣1️⃣ Fatura Adresi (Opsiyonel - aynı adres kullanılıyorsa null olabilir)
+    // -------------------------
+    private String invoiceAddress; // Fatura adresi (opsiyonel)
+    private String invoiceCity; // Fatura şehri (opsiyonel)
+    private String invoiceDistrict; // Fatura ilçesi (opsiyonel)
+
+    // -------------------------
+    // 2️⃣2️⃣ Kullanıcı Adres Seçimi (Login kullanıcılar için)
     // -------------------------
     private Long addressId; // Login olmuş kullanıcının seçtiği adres ID'si (opsiyonel)
     private Long userId; // Login olmuş kullanıcının ID'si (opsiyonel)
 
     // -------------------------
-    // 2️⃣2️⃣ Sepet Bilgileri
+    // 2️⃣3️⃣ Sepet Bilgileri
     // -------------------------
     private Long cartId; // Sepet ID'si (opsiyonel - eğer gönderilirse sepet kullanılır)
     private String guestUserId; // Guest kullanıcı ID'si (misafir kullanıcılar için)
     
     // -------------------------
-    // 2️⃣3️⃣ Kupon Bilgileri
+    // 2️⃣4️⃣ Kupon Bilgileri
     // -------------------------
     private String couponCode; // Uygulanan kupon kodu (opsiyonel)
 

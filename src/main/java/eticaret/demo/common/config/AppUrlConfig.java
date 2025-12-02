@@ -12,7 +12,7 @@ public class AppUrlConfig {
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
-    @Value("${app.frontend.admin.url:http://localhost:5174}")
+    @Value("${app.frontend.admin.url:yusufakin.xyz}")
     private String frontendAdminUrl;
 
     /**

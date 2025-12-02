@@ -130,7 +130,7 @@ public class CartReminderScheduler {
                 .highlight("Toplam Tutar: " + formatPrice(cart.getTotalAmount()))
                 .details(details)
                 .actionText("Sepetimi Görüntüle")
-                .actionUrl("http://localhost:3000/cart")
+                .actionUrl("yusufakin.online/cart")
                 .footerNote("Bu mail, sepetinize ürün ekledikten bir gün sonra otomatik olarak gönderildi.")
                 .build());
     }

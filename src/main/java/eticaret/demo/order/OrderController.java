@@ -3,14 +3,16 @@ package eticaret.demo.order;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import eticaret.demo.audit.AuditLogService;
 import eticaret.demo.auth.AppUser;
+import eticaret.demo.auth.AppUserRepository;
 import eticaret.demo.guest.GuestUserService;
 import eticaret.demo.common.response.ResponseMessage;
 import eticaret.demo.order.lookup.OrderLookupVerificationService;
+import org.springframework.security.core.Authentication;
 
 import java.util.Map;
 
@@ -18,12 +20,14 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
+@Slf4j
 public class OrderController {
 
     private final OrderService orderService;
     private final AuditLogService auditLogService;
     private final GuestUserService guestUserService;
     private final OrderLookupVerificationService orderLookupVerificationService;
+    private final AppUserRepository appUserRepository;
     /**
      * Sipariş sorgulama için doğrulama kodu gönder
      */
@@ -217,14 +221,51 @@ public class OrderController {
     /**
      * Sipariş sorgulama (Email + Sipariş No ile)
      * POST /api/orders/query
-     * Guest kullanıcılar için çerezden otomatik guestUserId alınır
+     * Authentication gerektirir - Token'dan email alınır, body'deki email yok sayılır
      */
     @PostMapping("/query")
     public ResponseMessage queryOrder(
             @Valid @RequestBody OrderQueryRequest request, 
+            Authentication authentication,
             @RequestParam(value = "guestUserId", required = false) String guestUserId,
             HttpServletRequest httpRequest) {
         
+        // Authentication'dan email al
+        String authenticatedEmail = null;
+        if (authentication != null && authentication.getPrincipal() != null) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof AppUser) {
+                authenticatedEmail = ((AppUser) principal).getEmail();
+            } else if (principal instanceof org.springframework.security.core.userdetails.UserDetails) {
+                authenticatedEmail = ((org.springframework.security.core.userdetails.UserDetails) principal).getUsername();
+            } else if (principal instanceof String) {
+                authenticatedEmail = (String) principal;
+            }
+        }
+        
+        // Eğer authentication varsa, token'dan gelen email'i kullan (güvenlik için)
+        if (authenticatedEmail != null && !authenticatedEmail.trim().isEmpty()) {
+            // Token'dan gelen email ile sipariş sorgula (body'deki email'i yok say)
+            log.info("Authenticated kullanıcı sipariş sorguluyor: {} (Token email: {})", request.getOrderNumber(), authenticatedEmail);
+            
+            // Request'teki email'i token'dan gelen email ile değiştir
+            request.setCustomerEmail(authenticatedEmail.trim());
+            
+            ResponseMessage response = orderService.queryOrder(request);
+            
+            if (response.isSuccess()) {
+                auditLogService.logSuccess("QUERY_ORDER", "Order", null,
+                        "Sipariş sorgulandı: " + request.getOrderNumber() + " (Authenticated Email: " + authenticatedEmail + ")",
+                        request, response, httpRequest);
+            } else {
+                auditLogService.logError("QUERY_ORDER", "Order", null,
+                        "Sipariş sorgulanamadı: " + response.getMessage(), response.getMessage(), httpRequest);
+            }
+            
+            return response;
+        }
+        
+        // Authentication yoksa, guest kullanıcı kontrolü yap
         // Guest kullanıcı için çerezden guestUserId al
         String finalGuestUserId = guestUserId;
         if (finalGuestUserId == null || finalGuestUserId.isEmpty()) {
@@ -234,6 +275,15 @@ public class OrderController {
         // Guest kullanıcı ID'sini doğrula
         if (finalGuestUserId != null && !guestUserService.isValidGuestUserId(finalGuestUserId)) {
             finalGuestUserId = null;
+        }
+        
+        // Eğer guest kullanıcı da yoksa, authentication gerektir
+        if (finalGuestUserId == null || finalGuestUserId.isEmpty()) {
+            log.warn("Sipariş sorgulama denemesi - Authentication veya guest kullanıcı yok: {}", request.getOrderNumber());
+            auditLogService.logError("QUERY_ORDER", "Order", null,
+                    "Sipariş sorgulanamadı: Authentication veya guest kullanıcı gerekli",
+                    "Authentication veya guest kullanıcı gerekli", httpRequest);
+            return new ResponseMessage("Sipariş sorgulamak için giriş yapmanız gerekiyor.", false);
         }
         
         // Guest kullanıcı ID'si varsa request'e ekle (OrderService'de kullanılabilir)
@@ -259,26 +309,45 @@ public class OrderController {
      * GET /api/orders/my-orders
      */
     @GetMapping("/my-orders")
-    @PreAuthorize("isAuthenticated()")
     public ResponseMessage getMyOrders(
-            @AuthenticationPrincipal AppUser currentUser,
+            Authentication authentication,
             HttpServletRequest httpRequest) {
-        if (currentUser == null || currentUser.getEmail() == null) {
-            return new ResponseMessage("Oturum bulunamadı veya kullanıcı bilgisi eksik.", false);
+        try {
+            // Authentication'dan AppUser'ı al
+            AppUser currentUser = null;
+            if (authentication != null && authentication.getPrincipal() != null) {
+                Object principal = authentication.getPrincipal();
+                if (principal instanceof AppUser) {
+                    currentUser = (AppUser) principal;
+                } else if (principal instanceof org.springframework.security.core.userdetails.UserDetails) {
+                    String email = ((org.springframework.security.core.userdetails.UserDetails) principal).getUsername();
+                    currentUser = appUserRepository.findByEmailIgnoreCase(email).orElse(null);
+                } else if (principal instanceof String) {
+                    String email = (String) principal;
+                    currentUser = appUserRepository.findByEmailIgnoreCase(email).orElse(null);
+                }
+            }
+            
+            if (currentUser == null || currentUser.getEmail() == null) {
+                return new ResponseMessage("Oturum bulunamadı veya kullanıcı bilgisi eksik.", false);
+            }
+            
+            ResponseMessage response = orderService.getMyOrders(currentUser.getEmail());
+            
+            if (response.isSuccess()) {
+                auditLogService.logSuccess("GET_MY_ORDERS", "Order", null,
+                        "Kullanıcı siparişleri getirildi: " + currentUser.getEmail(),
+                        Map.of("email", currentUser.getEmail()), response, httpRequest);
+            } else {
+                auditLogService.logError("GET_MY_ORDERS", "Order", null,
+                        "Kullanıcı siparişleri getirilemedi: " + response.getMessage(), response.getMessage(), httpRequest);
+            }
+            
+            return response;
+        } catch (Exception e) {
+            log.error("getMyOrders hatası: ", e);
+            return new ResponseMessage("Siparişler getirilirken bir hata oluştu: " + e.getMessage(), false);
         }
-        
-        ResponseMessage response = orderService.getMyOrders(currentUser.getEmail());
-        
-        if (response.isSuccess()) {
-            auditLogService.logSuccess("GET_MY_ORDERS", "Order", null,
-                    "Kullanıcı siparişleri getirildi: " + currentUser.getEmail(),
-                    Map.of("email", currentUser.getEmail()), response, httpRequest);
-        } else {
-            auditLogService.logError("GET_MY_ORDERS", "Order", null,
-                    "Kullanıcı siparişleri getirilemedi: " + response.getMessage(), response.getMessage(), httpRequest);
-        }
-        
-        return response;
     }
 
     /**
