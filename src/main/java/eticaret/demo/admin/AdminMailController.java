@@ -3,6 +3,7 @@ package eticaret.demo.admin;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -13,8 +14,7 @@ import eticaret.demo.common.response.DataResponseMessage;
 import eticaret.demo.mail.EmailMessage;
 import eticaret.demo.mail.MailService;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -128,11 +128,30 @@ public class AdminMailController {
     }
 
     /**
-     * Güzel bir HTML email template oluştur (haber/duyuru formatında)
+     * Logo'yu base64 olarak al
+     */
+    private String getLogoBase64() {
+        try {
+            ClassPathResource logoResource = new ClassPathResource("logo.png");
+            if (logoResource.exists()) {
+                byte[] logoBytes = logoResource.getInputStream().readAllBytes();
+                return Base64.getEncoder().encodeToString(logoBytes);
+            }
+        } catch (Exception e) {
+            // Logo yüklenemezse boş döndür
+        }
+        return "";
+    }
+
+    /**
+     * Sade bir HTML email template oluştur
      */
     private String createEmailTemplate(String subject, String message) {
-        String currentDate = LocalDateTime.now()
-                .format(DateTimeFormatter.ofPattern("dd MMMM yyyy, EEEE", java.util.Locale.forLanguageTag("tr")));
+        String logoBase64 = getLogoBase64();
+        String logoHtml = logoBase64.isEmpty() ? "" : 
+            "<div style=\"text-align: center; margin-bottom: 24px;\">" +
+            "<img src=\"data:image/png;base64," + logoBase64 + "\" alt=\"Logo\" style=\"max-width: 120px; height: auto;\">" +
+            "</div>";
         
         return "<!DOCTYPE html>\n" +
                 "<html lang=\"tr\">\n" +
@@ -141,86 +160,55 @@ public class AdminMailController {
                 "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
                 "    <title>" + escapeHtml(subject) + "</title>\n" +
                 "    <style>\n" +
-                "        :root {\n" +
-                "            color-scheme: light dark;\n" +
-                "        }\n" +
                 "        body {\n" +
                 "            margin: 0;\n" +
                 "            padding: 0;\n" +
-                "            font-family: 'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;\n" +
-                "            background-color: #f6f7fb;\n" +
-                "            color: #000000;\n" +
+                "            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;\n" +
+                "            background-color: #f5f5f5;\n" +
+                "            color: #333333;\n" +
                 "            line-height: 1.6;\n" +
                 "        }\n" +
                 "        .wrapper {\n" +
                 "            max-width: 600px;\n" +
                 "            margin: 0 auto;\n" +
-                "            padding: 32px 16px;\n" +
+                "            padding: 20px;\n" +
                 "        }\n" +
                 "        .card {\n" +
                 "            background: #ffffff;\n" +
-                "            border-radius: 32px;\n" +
-                "            padding: 48px 40px;\n" +
-                "            position: relative;\n" +
-                "            overflow: hidden;\n" +
-                "            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);\n" +
-                "            border: 2px solid #000000;\n" +
+                "            border-radius: 8px;\n" +
+                "            padding: 32px 24px;\n" +
+                "            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);\n" +
                 "        }\n" +
                 "        h1 {\n" +
-                "            font-size: 28px;\n" +
-                "            margin: 0 0 12px 0;\n" +
-                "            letter-spacing: -0.5px;\n" +
-                "            color: #000000;\n" +
-                "            font-weight: 700;\n" +
-                "        }\n" +
-                "        .date {\n" +
-                "            font-size: 14px;\n" +
-                "            color: #000000;\n" +
-                "            opacity: 0.8;\n" +
-                "            margin-top: 8px;\n" +
+                "            font-size: 24px;\n" +
+                "            margin: 0 0 20px 0;\n" +
+                "            color: #333333;\n" +
+                "            font-weight: 600;\n" +
                 "        }\n" +
                 "        .email-content {\n" +
                 "            font-size: 15px;\n" +
-                "            line-height: 1.7;\n" +
-                "            color: #000000;\n" +
-                "            margin: 24px 0;\n" +
+                "            line-height: 1.6;\n" +
+                "            color: #555555;\n" +
+                "            margin: 20px 0;\n" +
                 "        }\n" +
                 "        .email-content p {\n" +
                 "            margin: 0 0 16px 0;\n" +
-                "            color: #000000;\n" +
-                "        }\n" +
-                "        .divider {\n" +
-                "            height: 2px;\n" +
-                "            background: #000000;\n" +
-                "            margin: 30px 0;\n" +
-                "            border-radius: 1px;\n" +
+                "            color: #555555;\n" +
                 "        }\n" +
                 "        .footer {\n" +
                 "            text-align: center;\n" +
                 "            margin-top: 32px;\n" +
-                "            color: #000000;\n" +
-                "            font-size: 13px;\n" +
-                "            opacity: 0.8;\n" +
-                "        }\n" +
-                "        .footer .logo {\n" +
-                "            font-size: 20px;\n" +
-                "            font-weight: 700;\n" +
-                "            color: #000000;\n" +
-                "            margin-bottom: 10px;\n" +
-                "        }\n" +
-                "        .footer .info {\n" +
+                "            padding-top: 20px;\n" +
+                "            border-top: 1px solid #e0e0e0;\n" +
+                "            color: #888888;\n" +
                 "            font-size: 12px;\n" +
-                "            color: #000000;\n" +
-                "            opacity: 0.8;\n" +
-                "            margin-top: 15px;\n" +
                 "        }\n" +
                 "        @media (max-width: 600px) {\n" +
                 "            .card {\n" +
-                "                padding: 28px 24px;\n" +
-                "                border-radius: 24px;\n" +
+                "                padding: 24px 16px;\n" +
                 "            }\n" +
                 "            h1 {\n" +
-                "                font-size: 24px;\n" +
+                "                font-size: 20px;\n" +
                 "            }\n" +
                 "        }\n" +
                 "    </style>\n" +
@@ -228,17 +216,12 @@ public class AdminMailController {
                 "<body>\n" +
                 "    <div class=\"wrapper\">\n" +
                 "        <div class=\"card\">\n" +
-                "            <h1>📢 " + escapeHtml(subject) + "</h1>\n" +
-                "            <div class=\"date\">" + currentDate + "</div>\n" +
-                "            <div class=\"divider\"></div>\n" +
+                "            " + logoHtml + "\n" +
+                "            <h1>" + escapeHtml(subject) + "</h1>\n" +
                 "            <div class=\"email-content\">" + formatMessage(message) + "</div>\n" +
-                "            <div class=\"divider\"></div>\n" +
                 "            <div class=\"footer\">\n" +
-                "                <div class=\"logo\">HIEDRA COLLECTION</div>\n" +
-                "                <div class=\"info\">\n" +
-                "                    Bu e-posta HIEDRA COLLECTION tarafından gönderilmiştir.<br>\n" +
-                "                    Sorularınız için bizimle iletişime geçebilirsiniz.\n" +
-                "                </div>\n" +
+                "                <p>Bu e-posta HIEDRA COLLECTION tarafından gönderilmiştir.</p>\n" +
+                "                <p>Sorularınız için bizimle iletişime geçebilirsiniz.</p>\n" +
                 "            </div>\n" +
                 "        </div>\n" +
                 "    </div>\n" +

@@ -382,19 +382,19 @@ public class CartService {
     }
 
     /**
-     * 1 gün önce oluşturulmuş ve aktif olan sepetleri getir (mail gönderilmemiş)
+     * 2 saat önce oluşturulmuş ve aktif olan sepetleri getir (mail gönderilmemiş)
      */
     public List<Cart> getCartsForReminderEmail() {
-        LocalDateTime oneDayAgo = LocalDateTime.now().minusDays(1);
-        LocalDateTime twoDaysAgo = LocalDateTime.now().minusDays(2);
+        LocalDateTime twoHoursAgo = LocalDateTime.now().minusHours(2);
+        LocalDateTime threeHoursAgo = LocalDateTime.now().minusHours(3);
         
-        // 1-2 gün önce oluşturulmuş, aktif ve onaylanmamış sepetler
+        // 2-3 saat önce oluşturulmuş, aktif ve onaylanmamış sepetler
         return cartRepository.findAll().stream()
                 .filter(cart -> cart.getStatus() == CartStatus.AKTIF)
                 .filter(cart -> !cart.isEmpty())
                 .filter(cart -> {
                     LocalDateTime createdAt = cart.getCreatedAt();
-                    return createdAt.isAfter(twoDaysAgo) && createdAt.isBefore(oneDayAgo);
+                    return createdAt.isAfter(threeHoursAgo) && createdAt.isBefore(twoHoursAgo);
                 })
                 .filter(cart -> cart.getUser() != null || cart.getGuestUserId() != null) // Kullanıcı veya guest bilgisi olmalı
                 .toList();

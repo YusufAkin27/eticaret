@@ -680,7 +680,8 @@ public class PaymentManager implements PaymentService {
                             item.getProductName(),
                             buildEmailItemDescription(item),
                             item.getQuantity(),
-                            item.getTotalPrice()))
+                            item.getTotalPrice(),
+                            item.getProductImageUrl() != null ? item.getProductImageUrl() : ""))
                     .collect(Collectors.toList())
                     : List.of();
 

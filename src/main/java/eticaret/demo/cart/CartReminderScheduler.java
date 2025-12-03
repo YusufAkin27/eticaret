@@ -27,10 +27,11 @@ public class CartReminderScheduler {
     private final AuditLogService auditLogService;
 
     /**
-     * Her gün saat 10:00'da çalışır
-     * 1 gün önce sepete ürün eklenmiş ve hala aktif olan sepetler için hatırlatma maili gönder
+     * Günde 3 kez çalışır (sabah 10:00, öğlen 14:00, akşam 18:00)
+     * 2 saat önce sepete ürün eklenmiş ve hala aktif olan sepetler için hatırlatma maili gönder
+     * Bir kere mail gönderildiyse 3 gün boyunca tekrar gönderilmez
      */
-    @Scheduled(cron = "0 0 10 * * ?") // Her gün saat 10:00
+    @Scheduled(cron = "0 0 10,14,18 * * ?") // Günde 3 kez: 10:00, 14:00, 18:00
     @Transactional
     public void sendCartReminderEmails() {
         log.info("Sepet hatırlatma maili kontrolü başlatılıyor...");
@@ -131,7 +132,7 @@ public class CartReminderScheduler {
                 .details(details)
                 .actionText("Sepetimi Görüntüle")
                 .actionUrl("yusufakin.online/cart")
-                .footerNote("Bu mail, sepetinize ürün ekledikten bir gün sonra otomatik olarak gönderildi.")
+                .footerNote("Bu mail, sepetinize ürün ekledikten 2 saat sonra otomatik olarak gönderildi.")
                 .build());
     }
 
@@ -141,28 +142,54 @@ public class CartReminderScheduler {
         }
 
         StringBuilder builder = new StringBuilder();
+        builder.append("<div style=\"margin: 20px 0;\">");
+        
         for (CartItem item : cart.getItems()) {
             if (item.getProduct() == null) {
                 continue;
             }
-            builder.append("<div style=\"background:#ffffff;padding:15px;margin:12px 0;border-radius:10px;border:1px solid #e2e8f0;box-shadow:0 4px 10px rgba(15,23,42,0.06);\">");
-            builder.append("<div style=\"font-weight:600;color:#1f2937;font-size:16px;\">")
+            
+            String productImageUrl = item.getProduct().getCoverImageUrl();
+            String imageHtml = "";
+            if (productImageUrl != null && !productImageUrl.isEmpty()) {
+                imageHtml = String.format(
+                    "<div style=\"text-align: center; margin-bottom: 12px;\">" +
+                    "<img src=\"%s\" alt=\"%s\" style=\"max-width: 200px; width: 100%%; height: auto; border-radius: 8px; object-fit: cover;\">" +
+                    "</div>",
+                    sanitize(productImageUrl),
+                    sanitize(item.getProduct().getName())
+                );
+            }
+            
+            builder.append("<div style=\"background:#ffffff;padding:16px;margin:12px 0;border-radius:8px;border:1px solid #e0e0e0;box-shadow:0 2px 4px rgba(0,0,0,0.05);\">");
+            
+            if (!imageHtml.isEmpty()) {
+                builder.append(imageHtml);
+            }
+            
+            builder.append("<div style=\"font-weight:600;color:#333333;font-size:16px;margin-bottom:8px;word-wrap:break-word;\">")
                     .append(sanitize(item.getProduct().getName()))
                     .append("</div>");
-            builder.append("<div style=\"color:#4b5563;font-size:14px;margin-top:6px;\">");
-            builder.append("Adet: ").append(item.getQuantity());
+            
+            builder.append("<div style=\"color:#555555;font-size:14px;line-height:1.6;\">");
+            builder.append("<div style=\"margin-bottom:4px;\">Adet: <strong>").append(item.getQuantity()).append("</strong></div>");
+            
             if (item.getWidth() != null && item.getHeight() != null) {
-                builder.append(" | Boyut: ").append(item.getWidth()).append(" x ").append(item.getHeight()).append(" cm");
+                builder.append("<div style=\"margin-bottom:4px;\">Boyut: ").append(item.getWidth()).append(" x ").append(item.getHeight()).append(" cm</div>");
             }
             if (item.getPleatType() != null) {
-                builder.append(" | Pile: ").append(sanitize(item.getPleatType()));
+                builder.append("<div style=\"margin-bottom:4px;\">Pile: ").append(sanitize(item.getPleatType())).append("</div>");
             }
-            builder.append("</div>");
-            builder.append("<div style=\"color:#0f766e;font-weight:600;margin-top:8px;\">")
+            
+            builder.append("<div style=\"margin-top:12px;padding-top:12px;border-top:1px solid #e0e0e0;color:#333333;font-weight:600;font-size:15px;\">")
                     .append("Fiyat: ").append(formatPrice(item.getSubtotal()))
                     .append("</div>");
+            
+            builder.append("</div>");
             builder.append("</div>");
         }
+        
+        builder.append("</div>");
         return builder.toString();
     }
 

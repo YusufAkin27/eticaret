@@ -2,6 +2,7 @@ package eticaret.demo.marketing;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +15,7 @@ import eticaret.demo.product.Product;
 import eticaret.demo.product.ProductRepository;
 
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -499,46 +501,123 @@ public class MarketingEmailScheduler {
     }
 
     /**
-     * Genel marketing email şablonu
+     * Logo'yu base64 olarak al
+     */
+    private String getLogoBase64() {
+        try {
+            ClassPathResource logoResource = new ClassPathResource("logo.png");
+            if (logoResource.exists()) {
+                byte[] logoBytes = logoResource.getInputStream().readAllBytes();
+                return Base64.getEncoder().encodeToString(logoBytes);
+            }
+        } catch (Exception e) {
+            // Logo yüklenemezse boş döndür
+        }
+        return "";
+    }
+
+    /**
+     * Genel marketing email şablonu - Sade ve basit
      */
     private String buildGenericMarketingEmail(AppUser user) {
+        String logoBase64 = getLogoBase64();
+        String logoHtml = logoBase64.isEmpty() ? "" : 
+            "<div style=\"text-align: center; margin-bottom: 24px;\">" +
+            "<img src=\"data:image/png;base64," + logoBase64 + "\" alt=\"Logo\" style=\"max-width: 120px; height: auto;\">" +
+            "</div>";
+        
         return String.format("""
             <!DOCTYPE html>
             <html lang="tr">
             <head>
                 <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                    .header { background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-                    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-                    .button { display: inline-block; background: #27ae60; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin-top: 20px; }
-                    .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+                    body {
+                        margin: 0;
+                        padding: 0;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+                        background-color: #f5f5f5;
+                        color: #333333;
+                        line-height: 1.6;
+                    }
+                    .wrapper {
+                        max-width: 600px;
+                        margin: 0 auto;
+                        padding: 20px;
+                    }
+                    .card {
+                        background: #ffffff;
+                        border-radius: 8px;
+                        padding: 32px 24px;
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    }
+                    h1 {
+                        font-size: 24px;
+                        margin: 0 0 20px 0;
+                        color: #333333;
+                        font-weight: 600;
+                    }
+                    p {
+                        margin: 0 0 16px 0;
+                        color: #555555;
+                        font-size: 15px;
+                        line-height: 1.6;
+                    }
+                    .button {
+                        display: inline-block;
+                        background: #333333;
+                        color: #ffffff !important;
+                        padding: 12px 24px;
+                        text-decoration: none;
+                        border-radius: 6px;
+                        font-weight: 600;
+                        font-size: 15px;
+                    }
+                    .cta {
+                        text-align: center;
+                        margin: 24px 0;
+                    }
+                    .footer {
+                        text-align: center;
+                        margin-top: 32px;
+                        padding-top: 20px;
+                        border-top: 1px solid #e0e0e0;
+                        color: #888888;
+                        font-size: 12px;
+                    }
+                    @media (max-width: 600px) {
+                        .card {
+                            padding: 24px 16px;
+                        }
+                        h1 {
+                            font-size: 20px;
+                        }
+                    }
                 </style>
             </head>
             <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>📧 HIEDRA HOME COLLECTION'den Özel Mesajınız!</h1>
-                        <p style="margin-top: 10px; font-size: 18px; font-weight: 600;">HIEDRA HOME COLLECTION</p>
-                    </div>
-                    <div class="content">
+                <div class="wrapper">
+                    <div class="card">
+                        %s
+                        <h1>HIEDRA HOME COLLECTION'den Özel Mesajınız</h1>
                         <p>Merhaba <strong>%s</strong>,</p>
                         <p>Ev dekorasyonunuzda kalite ve şıklığı bir araya getiren ürünlerimizi keşfetmek için sitemizi ziyaret edin!</p>
                         <p>Geniş ürün yelpazemiz ve uygun fiyatlarımızla hizmetinizdeyiz.</p>
-                        <div style="text-align: center; margin-top: 30px;">
+                        <div class="cta">
                             <a href="https://yusufakin.online" class="button">Sitemizi Ziyaret Edin</a>
                         </div>
-                        <p style="margin-top: 30px; color: #666;">Size özel fırsatlar ve yeni ürünler sizi bekliyor!</p>
-                    </div>
-                    <div class="footer">
-                        <p style="font-weight: bold; font-size: 14px; margin-bottom: 10px;">HIEDRA HOME COLLECTION</p>
-                        <p>© 2024 HIEDRA HOME COLLECTION. Tüm hakları saklıdır.</p>
+                        <p style="margin-top: 24px; color: #666666;">Size özel fırsatlar ve yeni ürünler sizi bekliyor!</p>
+                        <div class="footer">
+                            <p>Bu e-posta HIEDRA HOME COLLECTION tarafından gönderilmiştir.</p>
+                            <p>© 2024 HIEDRA HOME COLLECTION. Tüm hakları saklıdır.</p>
+                        </div>
                     </div>
                 </div>
             </body>
             </html>
             """, 
+            logoHtml,
             sanitizeHtml(user.getFullName() != null ? user.getFullName() : "Değerli Müşterimiz"));
     }
     

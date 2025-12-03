@@ -1,14 +1,29 @@
 package eticaret.demo.mail;
 
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 public final class EmailTemplateBuilder {
 
     private EmailTemplateBuilder() {
+    }
+
+    private static String getLogoBase64() {
+        try {
+            ClassPathResource logoResource = new ClassPathResource("logo.png");
+            if (logoResource.exists()) {
+                byte[] logoBytes = logoResource.getInputStream().readAllBytes();
+                return Base64.getEncoder().encodeToString(logoBytes);
+            }
+        } catch (Exception e) {
+            // Logo yüklenemezse boş döndür
+        }
+        return "";
     }
 
     public static String build(EmailTemplateModel model) {
@@ -27,6 +42,11 @@ public final class EmailTemplateBuilder {
         String customSection = buildCustomSection(model);
         String footerNote = wrapFooter(model.getFooterNote());
         String preheader = escape(model.getPreheader());
+        String logoBase64 = getLogoBase64();
+        String logoHtml = logoBase64.isEmpty() ? "" : 
+            "<div style=\"text-align: center; margin-bottom: 24px;\">" +
+            "<img src=\"data:image/png;base64," + logoBase64 + "\" alt=\"Logo\" style=\"max-width: 120px; height: auto;\">" +
+            "</div>";
 
         return """
                 <!DOCTYPE html>
@@ -36,15 +56,12 @@ public final class EmailTemplateBuilder {
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <title>%s</title>
                     <style>
-                        :root {
-                            color-scheme: light dark;
-                        }
                         body {
                             margin: 0;
                             padding: 0;
-                            font-family: 'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-                            background-color: #f6f7fb;
-                            color: #000000;
+                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+                            background-color: #f5f5f5;
+                            color: #333333;
                             line-height: 1.6;
                         }
                         .preheader {
@@ -55,110 +72,103 @@ public final class EmailTemplateBuilder {
                             height: 0;
                             width: 0;
                             overflow: hidden;
-                            mso-hide: all;
                         }
                         .wrapper {
                             max-width: 600px;
                             margin: 0 auto;
-                            padding: 32px 16px;
+                            padding: 20px;
                         }
                         .card {
                             background: #ffffff;
-                            border-radius: 32px;
-                            padding: 48px 40px;
-                            position: relative;
-                            overflow: hidden;
-                            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-                            border: 2px solid #000000;
+                            border-radius: 8px;
+                            padding: 32px 24px;
+                            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
                         }
                         h1 {
-                            font-size: 28px;
-                            margin: 0 0 12px 0;
-                            letter-spacing: -0.5px;
-                            color: #000000;
-                            font-weight: 700;
+                            font-size: 24px;
+                            margin: 0 0 20px 0;
+                            color: #333333;
+                            font-weight: 600;
                         }
                         p {
                             margin: 0 0 16px 0;
-                            color: #000000;
+                            color: #555555;
                             font-size: 15px;
-                            line-height: 1.7;
+                            line-height: 1.6;
                         }
                         .details {
-                            border-radius: 24px;
-                            background: #f8f9fa;
-                            border: 2px solid #000000;
-                            padding: 24px 28px;
-                            margin: 24px 0;
+                            background: #f9f9f9;
+                            border-radius: 6px;
+                            padding: 16px;
+                            margin: 20px 0;
                         }
                         .details-row {
                             display: flex;
                             justify-content: space-between;
-                            margin-bottom: 12px;
+                            margin-bottom: 10px;
                         }
                         .details-row:last-child {
                             margin-bottom: 0;
                         }
                         .details-label {
                             font-weight: 600;
-                            color: #000000;
+                            color: #333333;
                         }
                         .details-value {
-                            color: #000000;
-                            font-weight: 500;
+                            color: #555555;
                         }
                         .cta {
-                            margin: 28px 0 12px 0;
+                            margin: 24px 0;
+                            text-align: center;
                         }
                         .button {
                             display: inline-block;
-                            padding: 14px 28px;
-                            border-radius: 999px;
+                            padding: 12px 24px;
+                            border-radius: 6px;
                             text-decoration: none;
                             font-weight: 600;
-                            letter-spacing: 0.2px;
+                            font-size: 15px;
                         }
                         .button-primary {
-                            background: #0f172a;
+                            background: #333333;
                             color: #ffffff !important;
                         }
                         .button-secondary {
                             background: transparent;
-                            color: #000000;
-                            border: 2px solid #000000;
+                            color: #333333;
+                            border: 1px solid #333333;
                             margin-left: 12px;
                         }
                         .highlight {
-                            border-radius: 20px;
-                            padding: 20px 24px;
-                            background: #f8f9fa;
-                            border: 2px solid #000000;
-                            margin: 24px 0;
-                            font-weight: 700;
-                            color: #000000;
-                            font-size: 18px;
+                            padding: 16px;
+                            background: #f9f9f9;
+                            border-radius: 6px;
+                            margin: 20px 0;
+                            font-weight: 600;
+                            color: #333333;
+                            font-size: 16px;
                             text-align: center;
-                            letter-spacing: 0.5px;
                         }
                         .footer {
                             text-align: center;
                             margin-top: 32px;
-                            color: #000000;
-                            font-size: 13px;
-                            opacity: 0.8;
+                            padding-top: 20px;
+                            border-top: 1px solid #e0e0e0;
+                            color: #888888;
+                            font-size: 12px;
                         }
                         @media (max-width: 600px) {
                             .card {
-                                padding: 28px 24px;
-                                border-radius: 24px;
+                                padding: 24px 16px;
                             }
                             .details-row {
                                 flex-direction: column;
-                                gap: 2px;
+                                gap: 4px;
                             }
                             .button-secondary {
                                 margin-left: 0;
                                 margin-top: 12px;
+                                display: block;
                             }
                         }
                     </style>
@@ -167,6 +177,7 @@ public final class EmailTemplateBuilder {
                     <span class="preheader">%s</span>
                     <div class="wrapper">
                         <div class="card">
+                            %s
                             <h1>%s</h1>
                             %s
                             %s
@@ -174,14 +185,15 @@ public final class EmailTemplateBuilder {
                             %s
                             %s
                             %s
+                            %s
                         </div>
-                        %s
                     </div>
                 </body>
                 </html>
                 """.formatted(
                 title,
                 preheader,
+                logoHtml,
                 title,
                 greeting,
                 paragraphs,

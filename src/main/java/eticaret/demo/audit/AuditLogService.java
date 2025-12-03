@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import eticaret.demo.auth.AppUser;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -99,11 +101,13 @@ public class AuditLogService {
     }
 
     /**
-     * Bu sepet için hatırlatma maili daha önce gönderilmiş mi?
+     * Bu sepet için hatırlatma maili son 3 gün içinde gönderilmiş mi?
+     * Bir kere mail gönderildiyse 3 gün boyunca tekrar gönderilmez
      */
     public boolean hasReminderEmailSent(Long cartId) {
-        return auditLogRepository.existsByEntityTypeAndEntityIdAndAction(
-                "Cart", cartId, "CART_REMINDER_EMAIL");
+        LocalDateTime threeDaysAgo = LocalDateTime.now().minusDays(3);
+        return auditLogRepository.existsByEntityTypeAndEntityIdAndActionAndCreatedAtAfter(
+                "Cart", cartId, "CART_REMINDER_EMAIL", threeDaysAgo);
     }
 
     /**

@@ -51,6 +51,13 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     // Belirli entity, action ve entityId için kayıt var mı?
     boolean existsByEntityTypeAndEntityIdAndAction(String entityType, Long entityId, String action);
     
+    // Son X gün içinde belirli entity, action ve entityId için kayıt var mı?
+    @Query("SELECT COUNT(a) > 0 FROM AuditLog a WHERE a.entityType = :entityType AND a.entityId = :entityId AND a.action = :action AND a.createdAt >= :since")
+    boolean existsByEntityTypeAndEntityIdAndActionAndCreatedAtAfter(@Param("entityType") String entityType, 
+                                                                     @Param("entityId") Long entityId, 
+                                                                     @Param("action") String action,
+                                                                     @Param("since") LocalDateTime since);
+    
     // Kullanıcıya göre sayfalama ile loglar
     Page<AuditLog> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
     

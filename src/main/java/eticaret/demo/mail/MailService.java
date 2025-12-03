@@ -310,29 +310,56 @@ public class MailService {
         }
 
         String rows = items.stream()
-                .map(item -> """
-                        <div style="padding:12px 0;border-bottom:1px solid rgba(148,163,184,0.3);display:flex;justify-content:space-between;gap:16px;">
-                            <div>
-                                <p style="margin:0;font-weight:600;color:#0f172a;">%s</p>
+                .map(item -> {
+                    String imageHtml = "";
+                    if (item.getImageUrl() != null && !item.getImageUrl().isBlank()) {
+                        imageHtml = String.format(
+                            "<div style=\"text-align: center; margin-bottom: 12px;\">" +
+                            "<img src=\"%s\" alt=\"%s\" style=\"max-width: 200px; width: 100%%; height: auto; border-radius: 8px; object-fit: cover;\">" +
+                            "</div>",
+                            escapeHtml(item.getImageUrl()),
+                            escapeHtml(item.getTitle())
+                        );
+                    }
+                    
+                    return """
+                        <div style="padding:16px 0;border-bottom:1px solid #e0e0e0;margin-bottom:16px;">
+                            %s
+                            <div style="display:flex;flex-direction:column;gap:8px;">
+                                <p style="margin:0;font-weight:600;color:#333333;font-size:16px;">%s</p>
                                 %s
-                                <p style="margin:4px 0 0 0;font-size:13px;color:#94a3b8;">Adet: %d</p>
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:8px;">
+                                    <p style="margin:0;font-size:14px;color:#555555;">Adet: <strong>%d</strong></p>
+                                    <p style="margin:0;font-weight:600;color:#333333;font-size:15px;">%s</p>
+                                </div>
                             </div>
-                            <p style="margin:0;font-weight:600;color:#0f172a;">%s</p>
                         </div>
                         """.formatted(
+                        imageHtml,
                         escapeHtml(item.getTitle()),
                         item.getDescription() != null && !item.getDescription().isBlank()
-                                ? "<p style=\"margin:4px 0 0 0;font-size:13px;color:#64748b;\">" + escapeHtml(item.getDescription()) + "</p>"
+                                ? "<p style=\"margin:0;font-size:14px;color:#555555;line-height:1.5;\">" + escapeHtml(item.getDescription()) + "</p>"
                                 : "",
                         item.getQuantity(),
-                        formatAmount(item.getTotalPrice())))
+                        formatAmount(item.getTotalPrice()));
+                })
                 .collect(Collectors.joining());
 
         return """
-                <div style="margin-top:32px;border-radius:24px;border:1px solid rgba(148,163,184,0.25);padding:20px 24px;background:#fff;">
-                    <p style="margin:0 0 12px 0;font-weight:600;color:#0f172a;">Ürün Özeti</p>
+                <div style="margin-top:24px;border-radius:8px;border:1px solid #e0e0e0;padding:20px;background:#ffffff;">
+                    <p style="margin:0 0 16px 0;font-weight:600;color:#333333;font-size:18px;">Ürün Özeti</p>
                     %s
                 </div>
+                <style>
+                    @media only screen and (max-width: 600px) {
+                        .order-item-image {
+                            max-width: 150px !important;
+                        }
+                        .order-item-content {
+                            font-size: 14px !important;
+                        }
+                    }
+                </style>
                 """.formatted(rows);
     }
 
@@ -377,12 +404,14 @@ public class MailService {
         private final String description;
         private final int quantity;
         private final BigDecimal totalPrice;
+        private final String imageUrl;
 
-        public OrderEmailItem(String title, String description, int quantity, BigDecimal totalPrice) {
+        public OrderEmailItem(String title, String description, int quantity, BigDecimal totalPrice, String imageUrl) {
             this.title = title;
             this.description = description;
             this.quantity = quantity;
             this.totalPrice = totalPrice;
+            this.imageUrl = imageUrl;
         }
 
         public String getTitle() {
@@ -399,6 +428,10 @@ public class MailService {
 
         public BigDecimal getTotalPrice() {
             return totalPrice;
+        }
+
+        public String getImageUrl() {
+            return imageUrl;
         }
     }
 
